@@ -1,6 +1,7 @@
 import pandas
 from sklearn import model_selection, preprocessing, linear_model, naive_bayes, metrics, svm
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from keras import layers, models, optimizers
 
 demo_loading_data = False
 demo_data_frame = False
@@ -8,6 +9,7 @@ demo_data_split = False
 demo_count_vectors = False
 demo_naive_bayes = True
 demo_linear_classifier = True
+demo_shallow_neural_net = True
 
 #####################################  Loading Data from Corpus File #####################################
 
@@ -124,7 +126,10 @@ xvalid_tfidf_ngram_chars =  tfidf_vect_ngram_chars.transform(array_of_validation
 
 def train_model(classifier, feature_vector_train, label, feature_vector_valid, valid_y, is_neural_net=False):
     # fit the training dataset on the classifier
-    classifier.fit(feature_vector_train, label)
+    if is_neural_net:
+        classifier.fit(feature_vector_train, label, epochs=10)
+    else:
+        classifier.fit(feature_vector_train, label)
 
     # predict the labels on validation dataset
     predictions = classifier.predict(feature_vector_valid)
@@ -181,3 +186,26 @@ if demo_linear_classifier:
     print('\nTraining Linear Classifier on char-level tf-idf vectors...')
     accuracy = train_model(linear_model.LogisticRegression(), xtrain_tfidf_ngram_chars, train_y, xvalid_tfidf_ngram_chars, valid_y)
     print "LR, CharLevel Vectors: ", accuracy
+
+
+#####################################  Shallow Neural Net  #####################################
+
+def create_model_architecture(input_size):
+    # create input layer
+    input_layer = layers.Input((input_size, ), sparse=True)
+
+    # create hidden layer
+    hidden_layer = layers.Dense(100, activation="relu")(input_layer)
+
+    # create output layer
+    output_layer = layers.Dense(1, activation="sigmoid")(hidden_layer)
+
+    classifier = models.Model(inputs = input_layer, outputs = output_layer)
+    classifier.compile(optimizer=optimizers.Adam(), loss='binary_crossentropy')
+    return classifier
+
+if demo_shallow_neural_net:
+    print('\nTraining shallow neural net...')
+    classifier = create_model_architecture(xtrain_tfidf_ngram.shape[1])
+    accuracy = train_model(classifier, xtrain_tfidf_ngram, train_y, xvalid_tfidf_ngram, valid_y, is_neural_net=True)
+    print "NN, Ngram Level TF IDF Vectors",  accuracy
